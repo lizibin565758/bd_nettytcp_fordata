@@ -171,7 +171,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
 
     /**
      * 特殊格式加油数据
-     * 特征码为 01 时调用
+     * 特征码为 02 时调用
      *
      * @author Lizb
      * @date 2023/3/21 14:33:47
@@ -183,7 +183,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
 
     /**
      * 特殊格式加油数据
-     * 特征码为 01 时调用
+     * 特征码为 03 时调用
      *
      * @author Lizb
      * @date 2023/3/21 14:33:47
@@ -195,7 +195,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
 
     /**
      * 特殊格式加油数据
-     * 特征码为 01 时调用
+     * 特征码为 04 时调用
      *
      * @author Lizb
      * @date 2023/3/21 14:33:47
@@ -204,8 +204,6 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
 
         return gasData96POJO;
     }
-
-
 
     /**
      * 特殊格式加油数据
