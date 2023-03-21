@@ -14,8 +14,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 
 import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.*;
-import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.data05ToFormula;
-import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.hexToDec;
+import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.*;
 
 /**
  * 处理接收的参数_具体逻辑
@@ -134,37 +133,24 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         String signatureCode = msgStrBuffer.substring(82, 84);
         System.out.println(" 🚀 " + DataUtils.formatTimeYMD_HMS_SSS(System.currentTimeMillis()) + "===>>> 特征码为: " + signatureCode);
 
-        switch (signatureCode) {
-            case featureCode01:
-                gasData96POJO = featureCode01forData(gasData96POJO, msgStrBuffer, signatureCode);
-                break;
-            case featureCode02:
-                gasData96POJO = featureCode02forData(gasData96POJO, msgStrBuffer, signatureCode);
-                break;
-            case featureCode03:
-                gasData96POJO = featureCode03forData(gasData96POJO, msgStrBuffer, signatureCode);
-                break;
-            case featureCode04:
-                gasData96POJO = featureCode04forData(gasData96POJO, msgStrBuffer, signatureCode);
-                break;
-            case featureCode05:
-                gasData96POJO = featureCode05forData(gasData96POJO, msgStrBuffer, signatureCode);
-                break;
-            default:
-                break;
+        if (featureCode05.equals(signatureCode)) {
+            gasData96POJO = featureCode05forData(gasData96POJO, msgStrBuffer, signatureCode);
+        } else {
+            gasData96POJO = featureCode01forData(gasData96POJO, msgStrBuffer, signatureCode);
         }
+
         String gasData96JSON = JSON.toJSONString(gasData96POJO);
         System.out.println(" 🚀 " + DataUtils.formatTimeYMD_HMS_SSS(System.currentTimeMillis()) + "===>>> gasData96JSON: " + gasData96JSON);
     }
 
     /**
      * 特殊格式加油数据
-     * 特征码为 01 时调用
+     * 特征码为 01/02/03/04 时调用
      *
      * @author Lizb
      * @date 2023/3/21 14:33:47
      */
-    public GasData96POJO featureCode01forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode){
+    public GasData96POJO featureCode01forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode) {
         // 起始标志
         gasData96POJO.setStartingSymbol(msgStrBuffer.substring(0, 10));
         // 功能码
@@ -173,70 +159,52 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         gasData96POJO.setOilGunCode(hexToDec(msgStrBuffer.substring(12, 14)));
         // 加油时间
         gasData96POJO.setRefuelingTime(CrossoverToolUtils.gasDateHexToDec(msgStrBuffer.substring(14, 26)));
-        // 加油量
-        gasData96POJO.setFuelQuantity(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(26, 46))));
-        // 加油金额
-        gasData96POJO.setRefuelingAmount(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(46, 66))));
         // 加油单价
         gasData96POJO.setUnitPrice(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(66, 78))));
         // 备用1
         gasData96POJO.setReserve1(msgStrBuffer.substring(78, 82));
         // 特征码
         gasData96POJO.setSignatureCode(signatureCode);
-        // 相对总油量1
+
+        // TODO 加油量计算开始
         String relativeTotalOilQuantity1 = CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(86, 110)));
+        // 相对总油量1
         gasData96POJO.setRelativeTotalOilQuantity1(relativeTotalOilQuantity1);
-        // 相对总油量2
         String relativeTotalOilQuantity2 = CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(110, 134)));
+        // 相对总油量2
         gasData96POJO.setRelativeTotalOilQuantity2(relativeTotalOilQuantity2);
-        // 05特征码的油枪总量, 公式: 油枪总量=总油量1-总油量2
-        gasData96POJO.setTotalOilQuantityOfOilGun05(String.valueOf(data05ToFormula(relativeTotalOilQuantity1, relativeTotalOilQuantity2)));
+        BigDecimal fuelQuantity = strToSubtraction(relativeTotalOilQuantity1, relativeTotalOilQuantity2);
+        // 加油量 TODO 总油量1-总油量2
+        gasData96POJO.setFuelQuantity(String.valueOf(fuelQuantity));
+
+        // TODO 加油金额计算开始
+        String relativeTotalAmount1 = CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(134, 158)));
         // 相对金额1
-        gasData96POJO.setRelativeTotalAmount1(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(134, 158))));
+        gasData96POJO.setRelativeTotalAmount1(relativeTotalAmount1);
+        String relativeTotalAmount2 = CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(158, 182)));
         // 相对金额2
-        gasData96POJO.setRelativeTotalAmount2(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(158, 182))));
+        gasData96POJO.setRelativeTotalAmount2(relativeTotalAmount2);
+        BigDecimal refuelingAmount = strToSubtraction(relativeTotalAmount1, relativeTotalAmount2);
+        // 加油金额 TODO 加油⾦额=总⾦额1-总⾦额2
+        gasData96POJO.setRefuelingAmount(String.valueOf(refuelingAmount));
+
+
+
+
+        BigDecimal totalOilQuantityOfOilGun = strToAddition(String.valueOf(fuelQuantity), relativeTotalOilQuantity1);
+        // 01/02/03/04 油枪总量, 公式: 加油总量=加油量+原加油总量
+        gasData96POJO.setTotalOilQuantityOfOilGun(String.valueOf(totalOilQuantityOfOilGun));
+
+
+
+
+
         // 帧号
         gasData96POJO.setFrameNumber(String.valueOf(hexToDec(msgStrBuffer.substring(182, 184))));
         // CRC校验
         gasData96POJO.setCrcCheck(String.valueOf(Integer.parseInt(msgStrBuffer.substring(184, 188), 16)));
         // 结束标志
         gasData96POJO.setEndCode(String.valueOf(Integer.parseInt(msgStrBuffer.substring(188, 192), 16)));
-
-        return gasData96POJO;
-    }
-
-    /**
-     * 特殊格式加油数据
-     * 特征码为 02 时调用
-     *
-     * @author Lizb
-     * @date 2023/3/21 14:33:47
-     */
-    public GasData96POJO featureCode02forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode){
-
-        return gasData96POJO;
-    }
-
-    /**
-     * 特殊格式加油数据
-     * 特征码为 03 时调用
-     *
-     * @author Lizb
-     * @date 2023/3/21 14:33:47
-     */
-    public GasData96POJO featureCode03forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode){
-
-        return gasData96POJO;
-    }
-
-    /**
-     * 特殊格式加油数据
-     * 特征码为 04 时调用
-     *
-     * @author Lizb
-     * @date 2023/3/21 14:33:47
-     */
-    public GasData96POJO featureCode04forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode){
 
         return gasData96POJO;
     }
@@ -274,7 +242,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         String relativeTotalOilQuantity2 = CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(110, 134)));
         gasData96POJO.setRelativeTotalOilQuantity2(relativeTotalOilQuantity2);
         // 05特征码的油枪总量, 公式: 油枪总量=总油量1-总油量2
-        gasData96POJO.setTotalOilQuantityOfOilGun05(String.valueOf(data05ToFormula(relativeTotalOilQuantity1, relativeTotalOilQuantity2)));
+        gasData96POJO.setTotalOilQuantityOfOilGun(String.valueOf(strToSubtraction(relativeTotalOilQuantity1, relativeTotalOilQuantity2)));
         // 相对金额1
         gasData96POJO.setRelativeTotalAmount1(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(134, 158))));
         // 相对金额2

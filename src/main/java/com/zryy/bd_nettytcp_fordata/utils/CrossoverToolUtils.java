@@ -1,6 +1,5 @@
 package com.zryy.bd_nettytcp_fordata.utils;
 
-import com.alibaba.fastjson.JSON;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -77,15 +76,29 @@ public class CrossoverToolUtils {
     }
 
     /**
+     * String转换, 减法
      * 加油数据, 特殊格式中
      * 特征码05的油枪总量公式: 油枪总量=总油量1-总油量2
      *
      * @author Lizb
      * @date 2023/3/21 14:15:56
      */
-    public static BigDecimal data05ToFormula(String num1, String num2) {
+    public static BigDecimal strToSubtraction(String num1, String num2) {
         BigDecimal number1 = new BigDecimal(num1);
         BigDecimal number2 = new BigDecimal(num2);
         return number1.subtract(number2);
     }
+
+    /**
+     * String转换, 加法
+     *
+     * @author Lizb
+     * @date 2023/3/21 17:14:36
+     */
+    public static BigDecimal  strToAddition(String num1, String num2){
+        BigDecimal number1 = new BigDecimal(num1);
+        BigDecimal number2 = new BigDecimal(num2);
+        return number1.add(number2);
+    }
+
 }

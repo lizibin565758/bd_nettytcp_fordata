@@ -72,9 +72,11 @@ public class GasData96POJO extends BasePOJO implements Serializable {
     private String relativeTotalOilQuantity2;
 
     /**
-     * 特征码为05的油枪总油量: 油枪总量 = 总油量1 - 总油量2
+     * 特殊编码的 油枪总油量/加油总量:
+     * 01/02/03/04 : 加油总量=加油量+原加油总量
+     * 05特征码公式: 油枪总量 = 总油量1 - 总油量2
      */
-    private String totalOilQuantityOfOilGun05;
+    private String totalOilQuantityOfOilGun;
 
     /**
      * 相对总金额1_12B:第67-78字节
