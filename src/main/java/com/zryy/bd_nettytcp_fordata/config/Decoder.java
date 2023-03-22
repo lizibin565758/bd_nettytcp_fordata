@@ -1,4 +1,4 @@
-package com.zryy.bd_nettytcp_fordata.handler;
+package com.zryy.bd_nettytcp_fordata.config;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;

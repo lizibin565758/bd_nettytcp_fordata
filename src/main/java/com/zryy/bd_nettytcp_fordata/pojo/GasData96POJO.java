@@ -3,6 +3,7 @@ package com.zryy.bd_nettytcp_fordata.pojo;
 import lombok.*;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.Date;
 
 /**
@@ -72,11 +73,15 @@ public class GasData96POJO extends BasePOJO implements Serializable {
     private String relativeTotalOilQuantity2;
 
     /**
-     * 特殊编码的 油枪总油量/加油总量:
-     * 01/02/03/04 : 加油总量=加油量+原加油总量
+     * 特殊编码的 油枪总油量/加油总量
      * 05特征码公式: 油枪总量 = 总油量1 - 总油量2
      */
     private String totalOilQuantityOfOilGun;
+
+    /**
+     * 加油量总累计, 起始为0
+     */
+    private BigDecimal totalCumulativeRefueling;
 
     /**
      * 相对总金额1_12B:第67-78字节
@@ -97,6 +102,7 @@ public class GasData96POJO extends BasePOJO implements Serializable {
      * crc校验_2B: (默认00) 第92-93 字节 （crc16⾼位在前，低位在后）
      */
     private String crcCheck;
+
 
 
 }

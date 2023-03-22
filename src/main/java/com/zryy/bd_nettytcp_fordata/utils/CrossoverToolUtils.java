@@ -95,7 +95,7 @@ public class CrossoverToolUtils {
      * @author Lizb
      * @date 2023/3/21 17:14:36
      */
-    public static BigDecimal  strToAddition(String num1, String num2){
+    public static BigDecimal strToAddition(String num1, String num2) {
         BigDecimal number1 = new BigDecimal(num1);
         BigDecimal number2 = new BigDecimal(num2);
         return number1.add(number2);

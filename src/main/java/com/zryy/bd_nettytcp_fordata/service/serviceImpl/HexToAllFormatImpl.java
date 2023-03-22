@@ -1,7 +1,6 @@
 package com.zryy.bd_nettytcp_fordata.service.serviceImpl;
 
 import com.alibaba.fastjson.JSON;
-import com.zryy.bd_nettytcp_fordata.constant.CodeConstant;
 import com.zryy.bd_nettytcp_fordata.pojo.GasData72POJO;
 import com.zryy.bd_nettytcp_fordata.pojo.GasData96POJO;
 import com.zryy.bd_nettytcp_fordata.service.HexToAllFormatService;
@@ -28,10 +27,15 @@ import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.*;
 @RequiredArgsConstructor
 public class HexToAllFormatImpl implements HexToAllFormatService {
 
+    /**
+     * 加油量总累计, 起始为0
+     */
+    private static BigDecimal totalCumulativeRefueling = BigDecimal.valueOf(0);
+
     @Override
-    public void hexToCutOut(String msg) {
+    public void hexToCutOut(Object msg) {
         // 分化逻辑
-        hexCutOutFunctionCode(msg);
+        hexCutOutFunctionCode(String.valueOf(msg));
     }
 
     /**
@@ -45,7 +49,6 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         switch (functionCode) {
             // 注册包
             case SIGNCODE:
-
                 break;
             // 心跳包
             case HEARTBEATCODE:
@@ -85,8 +88,11 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         gasData72POJO.setOilGunCode(hexToDec(msgStrBuffer.substring(12, 14)));
         // 加油时间
         gasData72POJO.setRefuelingTime(CrossoverToolUtils.gasDateHexToDec(msgStrBuffer.substring(14, 26)));
+
+        String fuelQuantity = decToFloat(hexToAscii(msgStrBuffer.substring(26, 46)));
+
         // 加油量
-        gasData72POJO.setFuelQuantity(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(26, 46))));
+        gasData72POJO.setFuelQuantity(fuelQuantity);
         // 加油金额
         gasData72POJO.setRefuelingAmount(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(46, 66))));
         // 加油单价
@@ -112,7 +118,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
     }
 
     /**
-     * 加油数据_
+     * 特殊格式的加油数据
      *
      * @author Lizb
      * @date 2023/3/21 09:16:27
@@ -173,6 +179,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         String relativeTotalOilQuantity2 = CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(110, 134)));
         // 相对总油量2
         gasData96POJO.setRelativeTotalOilQuantity2(relativeTotalOilQuantity2);
+
         BigDecimal fuelQuantity = strToSubtraction(relativeTotalOilQuantity1, relativeTotalOilQuantity2);
         // 加油量 TODO 总油量1-总油量2
         gasData96POJO.setFuelQuantity(String.valueOf(fuelQuantity));
@@ -188,16 +195,10 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         // 加油金额 TODO 加油⾦额=总⾦额1-总⾦额2
         gasData96POJO.setRefuelingAmount(String.valueOf(refuelingAmount));
 
-
-
-
-        BigDecimal totalOilQuantityOfOilGun = strToAddition(String.valueOf(fuelQuantity), relativeTotalOilQuantity1);
-        // 01/02/03/04 油枪总量, 公式: 加油总量=加油量+原加油总量
-        gasData96POJO.setTotalOilQuantityOfOilGun(String.valueOf(totalOilQuantityOfOilGun));
-
-
-
-
+        BigDecimal toAddition = strToAddition(String.valueOf(totalCumulativeRefueling), String.valueOf(fuelQuantity));
+        totalCumulativeRefueling = toAddition;
+        // 获取总累计+ 当前加油量, 不断累加 无论01/02/03/04/05
+        gasData96POJO.setTotalCumulativeRefueling(toAddition);
 
         // 帧号
         gasData96POJO.setFrameNumber(String.valueOf(hexToDec(msgStrBuffer.substring(182, 184))));
@@ -205,7 +206,8 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         gasData96POJO.setCrcCheck(String.valueOf(Integer.parseInt(msgStrBuffer.substring(184, 188), 16)));
         // 结束标志
         gasData96POJO.setEndCode(String.valueOf(Integer.parseInt(msgStrBuffer.substring(188, 192), 16)));
-
+        System.out.println(" 🚀 " + DataUtils.formatTimeYMD_HMS_SSS(System.currentTimeMillis()) + "特征码为:" + signatureCode
+                + "累加的油量为:" + totalCumulativeRefueling);
         return gasData96POJO;
     }
 
@@ -225,8 +227,10 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         gasData96POJO.setOilGunCode(hexToDec(msgStrBuffer.substring(12, 14)));
         // 加油时间
         gasData96POJO.setRefuelingTime(CrossoverToolUtils.gasDateHexToDec(msgStrBuffer.substring(14, 26)));
+
+        String fuelQuantity = decToFloat(hexToAscii(msgStrBuffer.substring(26, 46)));
         // 加油量
-        gasData96POJO.setFuelQuantity(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(26, 46))));
+        gasData96POJO.setFuelQuantity(fuelQuantity);
         // 加油金额
         gasData96POJO.setRefuelingAmount(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(46, 66))));
         // 加油单价
@@ -243,6 +247,12 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         gasData96POJO.setRelativeTotalOilQuantity2(relativeTotalOilQuantity2);
         // 05特征码的油枪总量, 公式: 油枪总量=总油量1-总油量2
         gasData96POJO.setTotalOilQuantityOfOilGun(String.valueOf(strToSubtraction(relativeTotalOilQuantity1, relativeTotalOilQuantity2)));
+
+        BigDecimal toAddition = strToAddition(String.valueOf(totalCumulativeRefueling), fuelQuantity);
+        totalCumulativeRefueling = toAddition;
+        // 获取总累计+ 当前加油量, 不断累加 无论01/02/03/04/05
+        gasData96POJO.setTotalCumulativeRefueling(toAddition);
+
         // 相对金额1
         gasData96POJO.setRelativeTotalAmount1(CrossoverToolUtils.decToFloat(CrossoverToolUtils.hexToAscii(msgStrBuffer.substring(134, 158))));
         // 相对金额2
@@ -254,6 +264,9 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         // 结束标志
         gasData96POJO.setEndCode(String.valueOf(Integer.parseInt(msgStrBuffer.substring(188, 192), 16)));
 
+
+        System.out.println(" 🚀 " + DataUtils.formatTimeYMD_HMS_SSS(System.currentTimeMillis()) + "特征码为:" + signatureCode
+                + "累加的油量为:" + totalCumulativeRefueling);
         return gasData96POJO;
     }
 
