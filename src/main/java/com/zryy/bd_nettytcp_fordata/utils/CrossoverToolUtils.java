@@ -27,12 +27,12 @@ public class CrossoverToolUtils {
     }
 
     /**
-     *
+     * str转换十六进制字符串
      *
      * @author Lizb
      * @date 2023/3/23 16:21:14
      */
-    public static String strDecToHex(int decimal){
+    public static String strDecToHex(int decimal) {
         return Integer.toHexString(decimal);
     }
 
