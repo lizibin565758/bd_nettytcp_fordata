@@ -6,6 +6,9 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import org.springframework.stereotype.Component;
 
 /**
+ * 自定义发送消息格式
+ * 使用自定义解析数据格式工具类
+ *
  * @author Lizb
  * @version 1.0
  * @date 2023/3/22 16:36:46

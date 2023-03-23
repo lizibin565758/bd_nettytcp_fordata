@@ -30,7 +30,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
         nettyServerHandler = this;
     }
 
-    // 构造器方式注入, @RequiredArgsConstructor的方式在handler中不可用
+    // 构造器方式注入
     private HexToAllFormatService hexToAllFormatService;
 
     @Autowired

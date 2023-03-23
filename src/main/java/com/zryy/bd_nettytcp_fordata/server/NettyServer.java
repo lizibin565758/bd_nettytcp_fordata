@@ -27,7 +27,7 @@ import java.net.InetSocketAddress;
 @Component
 public class NettyServer {
 
-    //编写run方法，处理客户端的请求
+    // 编写start方法，处理客户端的请求
     public void start(InetSocketAddress address) {
 
         // boss 线程组用于处理连接工作 主线程组

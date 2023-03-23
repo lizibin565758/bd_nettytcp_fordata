@@ -4,12 +4,14 @@ import com.zryy.bd_nettytcp_fordata.handler.NettyServerHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import org.springframework.stereotype.Component;
 
 /**
  * @author Lizb
  * @version 1.0
  * @date 2023/3/22 16:59:07
  */
+@Component
 public class NettyServerChannelInitializer extends ChannelInitializer<SocketChannel> {
 
     @Override

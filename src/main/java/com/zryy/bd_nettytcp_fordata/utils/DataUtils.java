@@ -11,7 +11,6 @@ import java.text.SimpleDateFormat;
  * @version 1.0
  * @date 2023/3/9 15:09:16
  */
-@Component
 public class DataUtils {
     /**
      * 时间戳毫秒级 转换为年-月-日 时:分:秒:毫秒

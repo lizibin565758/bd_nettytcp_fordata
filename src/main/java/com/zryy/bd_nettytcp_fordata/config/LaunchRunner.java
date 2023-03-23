@@ -19,22 +19,12 @@ import java.net.InetSocketAddress;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class LaunchRunner implements CommandLineRunner {
 
-    private NettyServer nettyServer;
+    private final NettyServer nettyServer;
 
-    @Autowired
-    public void setNettyServer(NettyServer nettyServer) {
-        this.nettyServer = nettyServer;
-    }
-
-    private SocketPropertiesConfig socketProperties;
-
-    @Autowired
-    public void setSocketProperties(SocketPropertiesConfig socketProperties) {
-        this.socketProperties = socketProperties;
-    }
-
+    private final SocketPropertiesConfig socketProperties;
 
     @Override
     public void run(String... args) throws Exception {

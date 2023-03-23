@@ -8,11 +8,12 @@ import java.text.DecimalFormat;
 import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.BASE_VALUE;
 
 /**
+ * 自定义进制转换, 公式处理工具类
+ *
  * @author Lizb
  * @version 1.0
  * @date 2023/3/17 13:46:45
  */
-@Component
 public class CrossoverToolUtils {
 
     /**
