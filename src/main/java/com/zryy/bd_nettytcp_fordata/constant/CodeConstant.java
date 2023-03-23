@@ -24,6 +24,15 @@ public class CodeConstant {
          */
         int CODELENGTH = 138;
 
+        /*
+        {重启指令
+        配置设备时钟
+        配置IP地址及端口号} 的通用起始标志
+        */
+        String STARTFLAG = "5AAAAAAAA";
+        String IPCONDITIONCODE = "49503D";
+
+
         /**
          * 设备注册包/设备ID (上行)
          */
@@ -85,7 +94,10 @@ public class CodeConstant {
          */
         String featureCode05 = "05";
 
-
+        /**
+         * 结束码
+         */
+        String ENDCODE = "0D0A";
     }
 
 

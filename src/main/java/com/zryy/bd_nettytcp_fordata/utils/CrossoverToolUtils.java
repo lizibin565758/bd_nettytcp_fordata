@@ -27,18 +27,56 @@ public class CrossoverToolUtils {
     }
 
     /**
+     *
+     *
+     * @author Lizb
+     * @date 2023/3/23 16:21:14
+     */
+    public static String strDecToHex(int decimal){
+        return Integer.toHexString(decimal);
+    }
+
+    /**
      * 十六进制转换为ASCII格式编码
      *
      * @author Lizb
      * @date 2023/3/17 16:28:55
      */
-    public static String hexToAscii(String hexData) {
-        StringBuilder output = new StringBuilder();
-        for (int i = 0; i < hexData.length(); i += 2) {
-            String str = hexData.substring(i, i + 2);
-            output.append((char) Integer.parseInt(str, 16));
+    public static String hexToAscii(String hexStr) {
+        String str = "0123456789ABCDEF";
+        char[] hexs = hexStr.toCharArray();
+        byte[] bytes = new byte[hexStr.length() / 2];
+        int n;
+
+        for (int i = 0; i < bytes.length; i++) {
+            n = str.indexOf(hexs[2 * i]) * 16;
+            n += str.indexOf(hexs[2 * i + 1]);
+            bytes[i] = (byte) (n & 0xff);
         }
-        return output.toString();
+        return new String(bytes);
+    }
+
+    /**
+     * ASCII转换十六进制字符串
+     *
+     * @param str 待转换的ASCII字符串
+     * @return String 每个Byte之间空格分隔，如: [61 6C 6B]
+     * @author Lizb
+     * @date 2023/3/23 15:03:14
+     */
+    public static String str2HexStr(String str) {
+        char[] chars = "0123456789ABCDEF".toCharArray();
+        StringBuilder strBuilder = new StringBuilder("");
+        byte[] bs = str.getBytes();
+        int bit;
+        for (byte b : bs) {
+            bit = (b & 0x0f0) >> 4;
+            strBuilder.append(chars[bit]);
+            bit = b & 0x0f;
+            strBuilder.append(chars[bit]);
+            strBuilder.append(' ');
+        }
+        return strBuilder.toString().trim();
     }
 
     /**

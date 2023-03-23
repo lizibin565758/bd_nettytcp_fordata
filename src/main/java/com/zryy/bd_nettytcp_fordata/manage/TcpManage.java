@@ -14,6 +14,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.*;
+import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.*;
+
 /**
  * 功能描述: 定时发送TCP报文
  * TODO 按需求更改即可
@@ -26,14 +29,39 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class TcpManage {
 
-    public void sendMsg() {
+    public static void main(String[] args) {
+        sendMsg();
+    }
+
+    public static void sendMsg() {
         ConcurrentHashMap<ChannelId, Channel> channelMap = ChannelMap.getChannelMap();
         if (CollectionUtils.isEmpty(channelMap)) {
             return;
         }
         ConcurrentHashMap.KeySetView<ChannelId, Channel> channelIds = channelMap.keySet();
-        byte[] msgBytes = {0x55, (byte) 0xAA, (byte) 0xAA, (byte) 0xAA, (byte) 0xAA,
-                (byte) 0xA8, 0x25, (byte) 0xCA};
+
+        /* 配置IP */
+        // 写出要修改的数据区, 例如修改IP和端口 格式为: 42.105.60.1 14,6001/
+        String ipStr = "27.105.60.1 14,6001/";
+        // 调用ASCII转换十六进制工具
+        String ipHex = str2HexStr(ipStr);
+        String ipOrProtHex = ipHex.replace(" ", "");
+        // 配置IP地址及端口号 HEX
+        String msgStr = STARTFLAG + IPCONDITIONCODE + ipOrProtHex + ENDCODE;
+        System.out.println(msgStr);
+
+        /* 配置时钟 */
+        String year = strDecToHex(2020);
+        String mon = strDecToHex(11);
+        String day = strDecToHex(03);
+        String h = strDecToHex(18);
+        String m = strDecToHex(30);
+        String s = strDecToHex(00);
+
+        String timeMsg = year + mon + day + h + m + s;
+        System.out.println(timeMsg);
+
+        System.out.println(msgStr);
         for (ChannelId channelId : channelIds) {
             Channel channel = ChannelMap.getChannelByName(channelId);
             // 判断是否活跃
@@ -44,13 +72,13 @@ public class TcpManage {
             }
             // 指令发送
             ByteBuf buffer = Unpooled.buffer();
-            log.info("开始发送报文:{}", Arrays.toString(msgBytes));
-            buffer.writeBytes(msgBytes);
+            log.info("开始发送报文:{}", Arrays.toString(msgStr.toCharArray()));
+            buffer.writeBytes(msgStr.getBytes());
             channel.writeAndFlush(buffer).addListener((ChannelFutureListener) future -> {
                 if (future.isSuccess()) {
-                    log.info("客户端:{},回写成功:{}", channelId, Arrays.toString(msgBytes));
+                    log.info("客户端:{},回写成功:{}", channelId, Arrays.toString(msgStr.toCharArray()));
                 } else {
-                    log.info("客户端:{},回写失败:{}", channelId, Arrays.toString(msgBytes));
+                    log.warn("客户端:{},回写失败:{}", channelId, Arrays.toString(msgStr.toCharArray()));
                 }
             });
         }
