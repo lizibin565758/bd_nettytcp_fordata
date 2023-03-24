@@ -1,11 +1,15 @@
 package com.zryy.bd_nettytcp_fordata.service.serviceImpl;
 
 import com.alibaba.fastjson.JSON;
+import com.zryy.bd_nettytcp_fordata.config.ChannelMap;
 import com.zryy.bd_nettytcp_fordata.pojo.GasData72POJO;
 import com.zryy.bd_nettytcp_fordata.pojo.GasData96POJO;
 import com.zryy.bd_nettytcp_fordata.service.HexToAllFormatService;
 import com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils;
 import com.zryy.bd_nettytcp_fordata.utils.DataUtils;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,7 +20,7 @@ import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.*;
 import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.*;
 
 /**
- * 处理接收的参数_具体逻辑
+ * 处理报文_具体逻辑
  *
  * @author Lizb
  * @version 1.0
@@ -33,9 +37,9 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
     private static BigDecimal totalCumulativeRefueling = BigDecimal.valueOf(0);
 
     @Override
-    public void hexToCutOut(Object msg) {
+    public void hexToCutOut(ChannelHandlerContext ctx, Object msg) {
         // 分化逻辑
-        hexCutOutFunctionCode(String.valueOf(msg));
+        hexCutOutFunctionCode(ctx, String.valueOf(msg));
     }
 
     /**
@@ -44,15 +48,52 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @author Lizb
      * @date 2023/3/20 13:33:02
      */
-    private void hexCutOutFunctionCode(String msg) {
+    private void hexCutOutFunctionCode(ChannelHandlerContext ctx, String msg) {
         String functionCode = msg.substring(10, 12); // 判断报文种类
         switch (functionCode) {
             // 注册包
             case SIGNCODE:
+                signCodeAnalysis(msg);
                 break;
             // 心跳包
             case HEARTBEATCODE:
                 log.info("心跳报文, 已自动回复上位机");
+                break;
+            // 配置IP及端口号
+            case CONFIGIPANDPORT:
+                if (msg.length() == 16) {
+                    log.info("配置IP及端口后, 返回的报文:{}" + msg);
+                } else {
+                    ChannelId channelId = ctx.channel().id();
+                    Channel channel = ChannelMap.getChannelMap().get(channelId);
+                    /* TODO 配置IP的逻辑, 具体怎么写看需求而定 */
+                    // 写出要修改的数据区, 例如修改IP和端口 格式为: 42.105.60.1 14,6001/
+                    String ipStr = "27.105.60.114,6001/";
+                    // 调用ASCII转换十六进制工具
+                    String ipHex = str2HexStr(ipStr);
+                    String ipOrProtHex = ipHex.replace(" ", "");
+                    // 配置IP地址及端口号 HEX
+                    String msgStr = STARTFLAG + IPCONDITIONCODE + ipOrProtHex + ENDCODE;
+                    System.out.println(msgStr);
+                    // 返回客户端
+                   /* channel.writeAndFlush(msgStr);
+                    channel.flush();*/
+                }
+                break;
+            // 配置时钟
+            case SETTINGCLOCK:
+                /* 配置时钟 */
+                String year = strDecToHex(2020);
+                String mon = strDecToHex(11);
+                String day = strDecToHex(03);
+                String h = strDecToHex(18);
+                String m = strDecToHex(30);
+                String s = strDecToHex(00);
+                String timeMsg = year + mon + day + h + m + s;
+                System.out.println(timeMsg);
+                // 返回客户端
+                   /* channel.writeAndFlush(timeMsg);
+                    channel.flush();*/
                 break;
             // 油枪数据
             case REFUELINGDATA:
@@ -68,6 +109,25 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
                 // 其他情况的处理
                 break;
         }
+    }
+
+    /**
+     * 解析设备注册包(设备ID)
+     *
+     * @author Lizb
+     * @date 2023/3/24 09:22:06
+     */
+    private void signCodeAnalysis(String msg) {
+
+        StringBuffer msgStrBuffer = new StringBuffer(msg);
+        String data23 = msgStrBuffer.substring(12, 58);
+        String dataID = msgStrBuffer.substring(58, 68);
+        /*十六进制转换ASCII格式*/
+        // data23, 据提供文档人员所说, 不会变, 但防止万一, 还是截取出来
+        System.out.println(hexToAscii(data23));
+        // 设备ID, 唯一值
+        System.out.println(hexToAscii(dataID));
+
     }
 
     /**

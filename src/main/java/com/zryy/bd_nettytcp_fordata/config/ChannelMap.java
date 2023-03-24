@@ -20,7 +20,7 @@ public class ChannelMap {
     /**
      * 管理一个全局map，保存连接进服务端的通道数量
      */
-    private static final ConcurrentHashMap<ChannelId, Channel> CHANNEL_MAP = new ConcurrentHashMap<>(128);
+    private static final ConcurrentHashMap<ChannelId, Channel> CHANNEL_MAP = new ConcurrentHashMap<>(1024);
 
     public static ConcurrentHashMap<ChannelId, Channel> getChannelMap() {
         return CHANNEL_MAP;

@@ -14,8 +14,9 @@ import javax.annotation.PostConstruct;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 
-import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.HEARTBEATCODE;
-import static com.zryy.bd_nettytcp_fordata.manage.TcpManage.sendMsg;
+import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.*;
+import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.str2HexStr;
+import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.strDecToHex;
 
 /**
  * Netty业务处理handler
@@ -78,9 +79,8 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
 
         // 回复客户端(设备采集器/上位机)消息
         this.channelWrite(ctx, msg);
-
         // 进入参数逻辑
-        nettyServerHandler.hexToAllFormatService.hexToCutOut(msg);
+        nettyServerHandler.hexToAllFormatService.hexToCutOut(ctx, msg);
 
     }
 
@@ -105,14 +105,13 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
             log.warn(" 🚀 服务端响应空的消息");
             return;
         }
-        sendMsg();
+
         // 上位机回复包, 接到心跳或设备心跳包 必须回复; 否则会造成设备异常断开
         String msgBytes = "3028AA0879750D0A";
         // 将客户端的信息直接返回写入ctx
         channel.writeAndFlush(msgBytes);
         // 刷新缓存区
         channel.flush();
-
     }
 
     /**
