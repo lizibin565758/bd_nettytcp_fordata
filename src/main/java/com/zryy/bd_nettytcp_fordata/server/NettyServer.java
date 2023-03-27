@@ -43,16 +43,16 @@ public class NettyServer {
                     .group(bossGroup, workerGroup)
                     // nioChannel
                     .channel(NioServerSocketChannel.class)
-                    //使用指定的端口设置套接字地址
+                    // 使用指定的端口设置套接字地址
                     .localAddress(address)
                     // 使用自定义处理类 绑定客户端连接时候触发操作
                     .childHandler(new NettyServerChannelInitializer())
                     // 临时存放已完成三次握手的请求的队列的最大长度 TODO 如果大于队列的最大长度，请求会被拒绝
-                    //服务端可连接队列数,对应TCP/IP协议listen函数中backlog参数
+                    // 服务端可连接队列数,对应TCP/IP协议listen函数中backlog参数
                     .option(ChannelOption.SO_BACKLOG, 1024)
                     // 保持长连接 2小时无数据激活心跳机制
                     .childOption(ChannelOption.SO_KEEPALIVE, true)
-                    //将小的数据包包装成更大的帧进行传送，提高网络的负载
+                    // 将小的数据包包装成更大的帧进行传送，提高网络的负载
                     .childOption(ChannelOption.TCP_NODELAY, true);
             // 服务器异步创建绑定定
             ChannelFuture future = bootstrap.bind(address).sync();

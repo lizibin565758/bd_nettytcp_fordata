@@ -20,6 +20,11 @@ public class BasePOJO implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
+     * 设备Id
+     */
+    private String deviceId;
+
+    /**
      * 起始标志
      */
     private String startingSymbol;

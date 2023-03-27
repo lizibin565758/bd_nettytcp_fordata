@@ -1,7 +1,9 @@
 package com.zryy.bd_nettytcp_fordata.service.serviceImpl;
 
+import ch.qos.logback.classic.util.LogbackMDCAdapter;
 import com.alibaba.fastjson.JSON;
 import com.zryy.bd_nettytcp_fordata.config.ChannelMap;
+import com.zryy.bd_nettytcp_fordata.constant.CodeConstant;
 import com.zryy.bd_nettytcp_fordata.pojo.GasData72POJO;
 import com.zryy.bd_nettytcp_fordata.pojo.GasData96POJO;
 import com.zryy.bd_nettytcp_fordata.service.HexToAllFormatService;
@@ -15,8 +17,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.*;
+import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.correlationId;
 import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.*;
 
 /**
@@ -49,23 +53,27 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @date 2023/3/20 13:33:02
      */
     private void hexCutOutFunctionCode(ChannelHandlerContext ctx, String msg) {
+
+        ChannelId channelId = ctx.channel().id();
+
         String functionCode = msg.substring(10, 12); // 判断报文种类
         switch (functionCode) {
             // 注册包
             case SIGNCODE:
-                signCodeAnalysis(msg);
+                signCodeAnalysis(ctx, msg);
                 break;
             // 心跳包
             case HEARTBEATCODE:
-                log.info("心跳报文, 已自动回复上位机");
+                log.info("接收到来自设备" + correlationId.get(channelId) + "的心跳报文, 已自动回复!");
                 break;
             // 配置IP及端口号
             case CONFIGIPANDPORT:
                 if (msg.length() == 16) {
-                    log.info("配置IP及端口后, 返回的报文:{}" + msg);
+                    log.info("配置IP及端口后, 返回的报文:{}", msg);
                 } else {
-                    ChannelId channelId = ctx.channel().id();
                     Channel channel = ChannelMap.getChannelMap().get(channelId);
+                    // 设备Id
+                    String deviceId = correlationId.get(channelId);
                     /* TODO 配置IP的逻辑, 具体怎么写看需求而定 */
                     // 写出要修改的数据区, 例如修改IP和端口 格式为: 42.105.60.1 14,6001/
                     String ipStr = "27.105.60.114,6001/";
@@ -74,7 +82,7 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
                     String ipOrProtHex = ipHex.replace(" ", "");
                     // 配置IP地址及端口号 HEX
                     String msgStr = STARTFLAG + IPCONDITIONCODE + ipOrProtHex + ENDCODE;
-                    System.out.println(msgStr);
+                    System.out.println("将设备 " + deviceId + " 的IP和端口修改为:" + msgStr);
                     // 返回客户端
                    /* channel.writeAndFlush(msgStr);
                     channel.flush();*/
@@ -99,10 +107,10 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
             case REFUELINGDATA:
                 if (msg.length() > CODELENGTH) {
                     log.info("🚀 特殊加密加油机报文");
-                    gasData96ToCutOut(msg);
+                    gasData96ToCutOut(ctx, msg);
                 } else if (msg.length() == CODELENGTH) {
                     log.info("🚀 正常加油机报文");
-                    gasData72ToCutOut(msg);
+                    gasData72ToCutOut(ctx, msg);
                 }
                 break;
             default:
@@ -117,16 +125,31 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @author Lizb
      * @date 2023/3/24 09:22:06
      */
-    private void signCodeAnalysis(String msg) {
-
+    private void signCodeAnalysis(ChannelHandlerContext ctx, String msg) {
         StringBuffer msgStrBuffer = new StringBuffer(msg);
-        String data23 = msgStrBuffer.substring(12, 58);
-        String dataID = msgStrBuffer.substring(58, 68);
-        /*十六进制转换ASCII格式*/
+        String data23 = hexToAscii(msgStrBuffer.substring(12, 58));
+        String dataID = hexToAscii(msgStrBuffer.substring(58, 68));
+        ChannelId channelId = ctx.channel().id();
+
+        /* 防止设备Id重复注册 */
+        Set<ChannelId> keys = correlationId.keySet();
+        for (ChannelId key : keys) {
+            String deviceId = correlationId.get(key);
+            System.out.println(key + "=" + deviceId);
+            if (dataID.equals(deviceId)) {
+                log.warn("此设备Id已被注册过! 请勿重复注册!");
+                return;
+            }
+        }
+
+        /* 注册设备 */
+        /* 十六进制转换ASCII格式 */
         // data23, 据提供文档人员所说, 不会变, 但防止万一, 还是截取出来
-        System.out.println(hexToAscii(data23));
+        System.out.println("数据区前23字节:  " + data23);
         // 设备ID, 唯一值
-        System.out.println(hexToAscii(dataID));
+        System.out.println("设备ID:  " + dataID);
+        correlationId.put(channelId, dataID);
+        System.out.println(" 🚀 设备 " + correlationId.get(channelId) + "已注册");
 
     }
 
@@ -136,10 +159,16 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @author Lizb
      * @date 2023/3/20 13:35:44
      */
-    private void gasData72ToCutOut(String msg) {
+    private void gasData72ToCutOut(ChannelHandlerContext ctx, String msg) {
+        // 通道Id
+        ChannelId channelId = ctx.channel().id();
+        // 设备Id
+        String deviceId = correlationId.get(channelId);
         StringBuffer msgStrBuffer = new StringBuffer(msg);
         GasData72POJO gasData72POJO = new GasData72POJO();
 
+        // 设备Id
+        gasData72POJO.setDeviceId(deviceId);
         // 起始标志
         gasData72POJO.setStartingSymbol(msgStrBuffer.substring(0, 10));
         // 功能码
@@ -183,7 +212,13 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @author Lizb
      * @date 2023/3/21 09:16:27
      */
-    public void gasData96ToCutOut(String msg) {
+    public void gasData96ToCutOut(ChannelHandlerContext ctx, String msg) {
+
+        // 通道Id
+        ChannelId channelId = ctx.channel().id();
+        // 设备Id
+        String deviceId = correlationId.get(channelId);
+
         StringBuffer msgStrBuffer = new StringBuffer(msg);
         GasData96POJO gasData96POJO = new GasData96POJO();
         /*
@@ -198,11 +233,11 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
         // 获取特征码, 走不同逻辑
         String signatureCode = msgStrBuffer.substring(82, 84);
         System.out.println(" 🚀 " + DataUtils.formatTimeYMD_HMS_SSS(System.currentTimeMillis()) + "===>>> 特征码为: " + signatureCode);
-
+        log.info("接到设备Id为{}的加油数据, 特征码为:{}", deviceId, signatureCode);
         if (featureCode05.equals(signatureCode)) {
-            gasData96POJO = featureCode05forData(gasData96POJO, msgStrBuffer, signatureCode);
+            gasData96POJO = featureCode05forData(ctx, gasData96POJO, msgStrBuffer, signatureCode);
         } else {
-            gasData96POJO = featureCode01forData(gasData96POJO, msgStrBuffer, signatureCode);
+            gasData96POJO = featureCode01forData(ctx, gasData96POJO, msgStrBuffer, signatureCode);
         }
 
         String gasData96JSON = JSON.toJSONString(gasData96POJO);
@@ -216,7 +251,14 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @author Lizb
      * @date 2023/3/21 14:33:47
      */
-    public GasData96POJO featureCode01forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode) {
+    public GasData96POJO featureCode01forData(ChannelHandlerContext ctx, GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode) {
+        // 通道Id
+        ChannelId channelId = ctx.channel().id();
+        // 设备Id
+        String deviceId = correlationId.get(channelId);
+        log.info("接到设备Id为{}的加油数据, 特征码为:{}", deviceId, signatureCode);
+        // 设备Id
+        gasData96POJO.setDeviceId(deviceId);
         // 起始标志
         gasData96POJO.setStartingSymbol(msgStrBuffer.substring(0, 10));
         // 功能码
@@ -278,7 +320,14 @@ public class HexToAllFormatImpl implements HexToAllFormatService {
      * @author Lizb
      * @date 2023/3/21 14:09:33
      */
-    public GasData96POJO featureCode05forData(GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode) {
+    public GasData96POJO featureCode05forData(ChannelHandlerContext ctx, GasData96POJO gasData96POJO, StringBuffer msgStrBuffer, String signatureCode) {
+        // 通道Id
+        ChannelId channelId = ctx.channel().id();
+        // 设备Id
+        String deviceId = correlationId.get(channelId);
+        log.info("接到设备Id为{}的加油数据, 特征码为:{}", deviceId, signatureCode);
+        // 设备Id
+        gasData96POJO.setDeviceId(deviceId);
         // 起始标志
         gasData96POJO.setStartingSymbol(msgStrBuffer.substring(0, 10));
         // 功能码

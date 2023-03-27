@@ -1,17 +1,32 @@
 package com.zryy.bd_nettytcp_fordata.constant;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelId;
 import lombok.Data;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
- * 常量
+ * 全局_变量/常量
  *
  * @author Lizb
  * @version 1.0
  * @date 2023/3/17 11:19:31
  */
+@Data
 @Component
 public class CodeConstant {
+
+    /**
+     * channelId和设备Id的对应关系
+     *
+     * @author Lizb
+     * @date 2023/3/24 16:14:28
+     */
+    public static Map<ChannelId, String>  correlationId = new HashMap<>();
+
     public interface FunctionCode {
 
         /**

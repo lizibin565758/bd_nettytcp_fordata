@@ -2,6 +2,7 @@ package com.zryy.bd_nettytcp_fordata.handler;
 
 import com.zryy.bd_nettytcp_fordata.config.ChannelMap;
 import com.zryy.bd_nettytcp_fordata.service.HexToAllFormatService;
+import com.zryy.bd_nettytcp_fordata.utils.DataUtils;
 import io.netty.channel.*;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
@@ -12,11 +13,9 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
 
-import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.*;
-import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.str2HexStr;
-import static com.zryy.bd_nettytcp_fordata.utils.CrossoverToolUtils.strDecToHex;
+import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.FunctionCode.HEARTBEATCODE;
+import static com.zryy.bd_nettytcp_fordata.constant.CodeConstant.correlationId;
 
 /**
  * Netty业务处理handler
@@ -56,6 +55,7 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
         int clientPort = inSocket.getPort();
         // 获取连接通道唯一标识
         ChannelId channelId = ctx.channel().id();
+
         // 如果map中不包含此连接，就保存连接
         if (ChannelMap.getChannelMap().containsKey(channelId)) {
             log.info(" 🚀 客户端:{}, 是连接状态，连接通道数量:{} ", channelId, ChannelMap.getChannelMap().size());
@@ -75,7 +75,12 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        log.info(" 🚀 收到客户端报文, 客户端id:{}, 客户端消息:{}", ctx.channel().id(), msg);
+
+        if (correlationId.get(ctx.channel().id()) != null) {
+            log.info(" 🚀 收到客户端报文, 设备id:{}, 设备消息:{}", correlationId.get(ctx.channel().id()), msg);
+        } else {
+            log.info(" 🚀 收到客户端报文, 客户端id:{}, 客户端消息:{}", ctx.channel().id(), msg);
+        }
 
         // 回复客户端(设备采集器/上位机)消息
         this.channelWrite(ctx, msg);
@@ -91,19 +96,30 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
      * @date 2023/3/23 09:41:11
      */
     public void channelWrite(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ChannelId channelId = ctx.channel().id();
-        Channel channel = ChannelMap.getChannelMap().get(channelId);
-
-        // 判断功能码
-        String functionCode = String.valueOf(msg).substring(10, 12);
 
         if (ctx.channel().id() == null) {
             log.warn(" 🚀 通道:{}, 不存在", ctx.channel().id());
             return;
         }
+
         if (msg == null || msg == "") {
             log.warn(" 🚀 服务端响应空的消息");
             return;
+        }
+
+        ChannelId channelId = ctx.channel().id();
+        Channel channel = ChannelMap.getChannelMap().get(channelId);
+        // 判断功能码
+        String functionCode = String.valueOf(msg).substring(10, 12);
+        if (correlationId.get(channelId) != null) {
+            // 设备Id
+            String deviceId = correlationId.get(channelId);
+            if (functionCode.equals(HEARTBEATCODE)) {
+                log.info("接收到设备Id为" + deviceId + "的心跳!");
+            } else {
+                log.info("接收到设备Id为" + deviceId + "的报文!");
+            }
+            System.out.println(" 🚀 " + "给设备Id为===>>> : " + deviceId + "的设备回复消息");
         }
 
         // 上位机回复包, 接到心跳或设备心跳包 必须回复; 否则会造成设备异常断开
@@ -124,13 +140,21 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         InetSocketAddress inSocket = (InetSocketAddress) ctx.channel().remoteAddress();
         String clientIp = inSocket.getAddress().getHostAddress();
+        // 通道Id
         ChannelId channelId = ctx.channel().id();
-        //包含此客户端才去删除
+        // 设备id
+        String deviceId = correlationId.get(channelId);
+        // 包含此客户端才去删除
         if (ChannelMap.getChannelMap().containsKey(channelId)) {
-            //删除连接
+            // 删除连接
             ChannelMap.getChannelMap().remove(channelId);
-            log.info(" 🚀 客户端:{}, 连接Netty服务器[ IP:{} ===>>> PORT:{} ]", channelId, clientIp, inSocket.getPort());
-            log.info(" 🚀 连接通道数量: " + ChannelMap.getChannelMap().size());
+            // 删除设备id对应关系
+            if (correlationId.get(ctx.channel().id()) != null || "".equals(correlationId.get(ctx.channel().id()))) {
+                correlationId.remove(ctx.channel().id());
+            }
+            log.warn(" 🚀 通道Id为:{}, 设备Id为:{}, 已清除", channelId, deviceId);
+            log.warn(" 🚀 客户端:{}, 连接Netty服务器[ IP:{} ===>>> PORT:{} ]", channelId, clientIp, inSocket.getPort());
+            log.warn(" 🚀 连接通道数量: " + ChannelMap.getChannelMap().size());
         }
     }
 
@@ -142,6 +166,9 @@ public class NettyServerHandler extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        if (correlationId.get(ctx.channel().id()) != null || "".equals(correlationId.get(ctx.channel().id()))) {
+            correlationId.remove(ctx.channel().id());
+        }
         cause.printStackTrace();
         ctx.close();
         log.error(" 🚀 异常 ==>> {}:发生了错误,此连接被关闭! 此时连通数量:{}", ctx.channel().id(), ChannelMap.getChannelMap().size());
